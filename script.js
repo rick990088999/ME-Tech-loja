@@ -55,10 +55,8 @@ $("#wppRodape").href = `https://wa.me/${WHATSAPP_NUMERO}`;
 const img = p => `<div class="ph">ME Tech</div>${p.imagem ? `<img src="${esc(p.imagem)}" alt="${esc(p.nome)}" loading="lazy" onerror="this.remove()">` : ""}`;
 function card(p, i = 0) {
   const ok = p.disponivel === true;
-  return `<article class="card ${ok ? "" : "off"}" style="animation-delay:${Math.min(i, 8) * 40}ms"><div class="img">${img(p)}<span class="tag ${ok ? "ok" : "no"}">${ok ? "Disponível" : "Esgotado"}</span>
-<div class="acts"><button data-ver="${esc(p.id)}" aria-label="Ver detalhes de ${esc(p.nome)}">${I.lupa}</button>${ok ? `<button data-add="${esc(p.id)}" aria-label="Adicionar ${esc(p.nome)} ao carrinho">${I.cart}</button>` : ""}</div></div>
-<div class="info"><h3>${esc(p.nome)}</h3><p>${esc(p.descricaoSimples)}</p><strong class="price">${fmt(cents(p.preco))}</strong>
-${ok ? "" : `<small class="soon">Esgotado — em breve de volta!</small><button class="pre" data-pre="${esc(p.id)}">Encomendar antecipadamente</button>`}</div></article>`;
+  return `<article class="card ${ok ? "" : "off"}" data-ver="${esc(p.id)}" tabindex="0" role="button" aria-label="Ver ${esc(p.nome)}" style="animation-delay:${Math.min(i, 8) * 40}ms"><div class="img">${img(p)}${ok ? "" : '<span class="tag no">Esgotado</span>'}</div>
+<div class="info"><h3>${esc(p.nome)}</h3><strong class="price">${fmt(cents(p.preco))}</strong></div></article>`;
 }
 function renderCats() {
   const cs = [...new Set(lista.map(p => p.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
@@ -83,12 +81,15 @@ $("#busca").oninput = e => { busca = e.target.value; renderLoja(); };
 $("#cats").onclick = e => { const b = e.target.closest("[data-c]"); if (b) { cat = b.dataset.c; renderLoja(); } };
 
 /* ---------- Detalhes ---------- */
+let detQ = 1;
 function abrirDetalhes(id) {
-  const p = achar(id); if (!p) return; const ok = p.disponivel === true;
+  const p = achar(id); if (!p) return; const ok = p.disponivel === true; detQ = 1;
   const car = Array.isArray(p.caracteristicas) && p.caracteristicas.length ? `<ul>${p.caracteristicas.map(c => `<li>${esc(c)}</li>`).join("")}</ul>` : "";
   $("#mcont").innerHTML = `<div class="mgrid"><div class="img" style="border-radius:12px">${img(p)}<span class="tag ${ok ? "ok" : "no"}">${ok ? "Disponível" : "Esgotado"}</span></div>
 <div><h2>${esc(p.nome)}</h2><p>${esc(p.descricaoDetalhada || p.descricaoSimples)}</p>${car}<strong class="price" style="font-size:1.5rem">${fmt(cents(p.preco))}</strong>
-${ok ? `<p><button class="btn" data-add="${esc(p.id)}">Adicionar ao carrinho</button></p>` : `<p class="mut">Esgotado — em breve de volta!</p><p><button class="btn" data-pre="${esc(p.id)}">Encomendar antecipadamente</button></p>`}</div></div>`;
+${ok ? "" : '<p class="mut">Esgotado — em breve de volta!</p>'}
+<div class="qsel"><span>Quantidade</span><button data-qd="-1" aria-label="Diminuir">−</button><b id="dq">1</b><button data-qd="1" aria-label="Aumentar">+</button></div>
+<button class="btn" style="width:100%" ${ok ? "data-add" : "data-pre"}="${esc(p.id)}">${ok ? "Adicionar ao carrinho" : "Encomendar antecipadamente"}</button></div></div>`;
   $("#modal").hidden = false; document.body.style.overflow = "hidden";
 }
 function fechar() { $("#modal").hidden = true; document.body.style.overflow = ""; }
@@ -97,10 +98,10 @@ addEventListener("keydown", e => { if (e.key === "Escape") fechar(); });
 
 /* ---------- Carrinho ---------- */
 function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 1600); }
-function addCart(id, pre) {
+function addCart(id, pre, n = 1) {
   const p = achar(id); if (!p) return;
   const i = cart.find(x => String(x.id) === String(id));
-  if (i) { i.qtd = Math.min(99, i.qtd + 1); if (pre) i.pre = true; } else cart.push({ id: p.id, qtd: 1, pre: !!pre });
+  if (i) { i.qtd = Math.min(99, i.qtd + n); if (pre) i.pre = true; } else cart.push({ id: p.id, qtd: n, pre: !!pre });
   persist(); toast(pre ? "Encomenda antecipada adicionada" : "Adicionado ao carrinho");
   const ic = document.querySelector('a.ib[href="#carrinho"]'); ic.classList.remove("bump"); void ic.offsetWidth; ic.classList.add("bump");
 }
@@ -124,6 +125,7 @@ function totais() {
 function atualizaBarra() {
   const t = totais(), b = $("#bar"), bd = $("#badge");
   bd.hidden = !t.un; bd.textContent = t.un;
+  $("#carRodape").textContent = t.un ? `Ver carrinho (${t.un})` : "Ver carrinho";
   b.hidden = !t.un || location.hash === "#carrinho";
   b.textContent = `${t.un} ${t.un === 1 ? "produto" : "produtos"} no carrinho · ${fmt(t.total)} · Finalizar pedido`;
 }
@@ -167,8 +169,9 @@ function enviar() {
 document.addEventListener("click", e => {
   const g = a => e.target.closest(`[${a}]`);
   let b;
-  if ((b = g("data-add"))) { addCart(b.dataset.add, false); if (!$("#modal").hidden) fechar(); }
-  else if ((b = g("data-pre"))) { addCart(b.dataset.pre, true); if (!$("#modal").hidden) fechar(); }
+  if ((b = g("data-add"))) { addCart(b.dataset.add, false, detQ); if (!$("#modal").hidden) fechar(); }
+  else if ((b = g("data-pre"))) { addCart(b.dataset.pre, true, detQ); if (!$("#modal").hidden) fechar(); }
+  else if ((b = g("data-qd"))) { detQ = Math.max(1, Math.min(99, detQ + Number(b.dataset.qd))); $("#dq").textContent = detQ; }
   else if ((b = g("data-ver"))) abrirDetalhes(b.dataset.ver);
   else if ((b = g("data-q"))) { const [id, d] = b.dataset.q.split(":"), i = cart.find(x => String(x.id) === id); if (i) { i.qtd = Math.max(1, Math.min(99, i.qtd + Number(d))); persist(); renderCarrinho(); } }
   else if ((b = g("data-rm"))) { cart = cart.filter(x => String(x.id) !== b.dataset.rm); persist(); renderCarrinho(); }
@@ -195,3 +198,4 @@ function rota() {
 }
 addEventListener("hashchange", rota);
 setTema(sel.tema); marca(); rota();
+addEventListener("keydown", e => { const c = e.target.closest && e.target.closest(".card"); if (c && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); abrirDetalhes(c.dataset.ver); } });
