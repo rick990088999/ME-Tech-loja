@@ -78,3 +78,8 @@ footer{border-top:1px solid var(--bd);margin-top:40px;padding:20px 0}.frow{displ
 .led-t span{padding-right:80px}
 @keyframes led{to{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){.led{text-align:center;white-space:normal}.led-t{animation:none}.led-t span+span{display:none}.led-t span{padding:0 10px}}
+/* Cartão clicável, quantidade nos detalhes e botões do rodapé */
+.card{cursor:pointer}.card:focus-visible{outline:2px solid var(--or)}
+.qsel{display:flex;align-items:center;gap:10px;margin:14px 0}.qsel span{flex:1}
+.qsel button{width:36px;height:36px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--tx);font-size:1.2rem;cursor:pointer}
+.frow .btn{margin:0 6px 8px 0}
